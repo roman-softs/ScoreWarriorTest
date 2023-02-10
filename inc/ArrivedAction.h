@@ -11,6 +11,15 @@ class ArrivingAction
 public:
     virtual ~ArrivingAction(){};
     virtual void exec(uint64_t uuid) = 0;
+
+    virtual std::optional<Coord> ranged_attack() const
+    {
+        return {};
+    }
+    virtual std::optional<uint32_t> melle_attack() const
+    {
+        return {};
+    }
 };
 
 using RangedAttackCallback = std::function<void(Coord rad, uint64_t unit_id)>;
@@ -28,6 +37,11 @@ public:
     void exec(uint64_t uuid) override
     {
         (cb_ptr_)(radius_, uuid);
+    }
+
+    std::optional<Coord> ranged_attack() const override
+    {
+        return radius_;
     }
 
 private:
@@ -49,6 +63,10 @@ public:
     void exec(uint64_t uuid) override
     {
         (cb_)(power_, uuid);
+    }
+    std::optional<uint32_t> melle_attack() const override
+    {
+        return power_;
     }
 
 private:

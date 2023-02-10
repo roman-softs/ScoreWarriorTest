@@ -9,13 +9,21 @@
 namespace ScoreWarrior::Test {
 
 namespace  {
-static std::string ids_to_string(const std::vector<UnitID>& ids) {
+std::string ids_to_string(const std::vector<UnitID>& ids) {
     std::string res;
     for (const auto id : ids) {
         res += std::to_string(id) + ", ";
     }
     return res.substr(0, res.size() - 2);
 }
+
+void print_march_message(const Coords &coords, UnitID unit_id, const std::vector<UnitID>& units_vec) {
+    std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
+                 + std::to_string(coords.first) + " " + std::to_string(coords.second)
+                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(units_vec)
+                 + "WINNER IS " + std::to_string(unit_id) << std::endl;
+};
+
 }
 
 Engine::Engine(std::unique_ptr<CommandsFeeder> &&feeder)
@@ -114,19 +122,37 @@ void Engine::add_ranged_attack_unit_cb(Coord rad, uint64_t unit_id)
 {
     const auto& coords = units_on_map_.at(unit_id)->coords();
     /*
-     * вообще это неправильная логика, потому что если мы принимаем один тик за единицу времени, то
+     * вообще это неправильная логика, потому что если мы принимаем один тик как единицу времени, то
      * последовательность испускания сигналов не должна играть роли,
      * первоначально я планировал написать систему которая коллекционирует всех атакующих
      * на данном тике юнитов и логику которая сопоставляет радиусы, силы и тд,
      * но в связи с тем что это слишком трудоемко для тестовой задачи (по моему мнению) решил отказаться.
      * Теперь возможен случай когда лучник убьет другого лучника, а тот так и не успеет выстрелить
      */
-    const auto vec = found_units_in_donut(rad, coords);
-    std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
+
+    /*const auto print_march_message = [&coords, &unit_id](const std::vector<UnitID>& units_vec) {
+        std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
+                     + std::to_string(coords.first) + " " + std::to_string(coords.second)
+                     + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(units_vec)
+                     + "WINNER IS " + std::to_string(unit_id) << std::endl;
+    };*/
+
+    const auto ranged_attacked_units = found_units_in_donut(rad, coords);
+    /*std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
                  + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(vec)
-                 + "WINNER IS " + std::to_string(unit_id) << std::endl;
-    remove_units(vec);
+                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(ranged_attacked_units)
+                 + "WINNER IS " + std::to_string(unit_id) << std::endl;*/
+
+    print_march_message(coords, unit_id, ranged_attacked_units);
+    remove_units(ranged_attacked_units);
+
+    const auto melle_attacked_units = found_unit_in_pos(coords, unit_id);
+    /*std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
+                 + std::to_string(coords.first) + " " + std::to_string(coords.second)
+                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(melle_attacked_units)
+                 + "WINNER IS " + std::to_string(unit_id) << std::endl;*/
+    print_march_message(melle_attacked_units);
+    remove_units(melle_attacked_units);
 }
 
 void Engine::add_melle_attack_unit_cb(uint32_t power, uint64_t unit_id)
@@ -176,6 +202,20 @@ std::vector<UnitID> Engine::found_units_in_donut(Coord rad, Coords pos)
         const auto y_max = pos.second + rad;
 
         if (x_min <= coords.first <= x_max && y_min <= coords.second <= y_max) {
+            units_in_range.push_back(id);
+        }
+    }
+    return units_in_range;
+}
+
+std::vector<UnitID> Engine::found_unit_in_pos(Coords pos, UnitID except)
+{
+    std::vector<UnitID> units_in_range;
+    for (const auto& [id, unit] : units_on_map_) {
+        if (unit->state() == Unit::State::Marching || id == except) {
+            continue;
+        }
+        if (unit->coords() == pos) {
             units_in_range.push_back(id);
         }
     }
