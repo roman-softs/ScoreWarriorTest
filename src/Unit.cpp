@@ -82,7 +82,7 @@ Unit::State Unit::state() const
     return state_;
 }
 
-Coords Unit::coords() const
+const Coords &Unit::coords() const
 {
     return coords_;
 }
@@ -92,11 +92,14 @@ uint64_t Unit::uuid() const
     return uuid_;
 }
 
+const std::unique_ptr<ArrivingAction> &Unit::arriving_action() const
+{
+    return arriving_action_;
+}
+
 void Unit::set_state(Unit::State state)
 {
     state_ = state;
 }
 
-
-
-}
+} // namespace ScoreWarrior::Test

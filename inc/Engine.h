@@ -10,8 +10,6 @@ namespace ScoreWarrior::Test {
 class CommandsFeeder;
 class Unit;
 
-using UnitID = uint64_t;
-
 class Engine
 {
 public:
@@ -25,8 +23,8 @@ public:
 private:
     void logic_machine(const CommandData& data);
 
-    void add_ranged_attack_unit_cb(Coord rad,  uint64_t unit_id);
-    void add_melle_attack_unit_cb(uint32_t power,  uint64_t unit_id);
+    void ranged_attack_cb(UnitID unit_id);
+    void melle_attack_cb(UnitID unit_id);
 
     void clear_attack_units();
     void run_attack();

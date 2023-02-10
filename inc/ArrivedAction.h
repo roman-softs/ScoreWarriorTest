@@ -1,16 +1,31 @@
 #pragma once
 
 #include "Unit.h"
+#include "Types.h"
 #include <functional>
 #include <memory>
 
 namespace ScoreWarrior::Test {
 
+using ActionCallback = std::function<void(UnitID unit_id)>;
+
 class ArrivingAction
 {
 public:
-    virtual ~ArrivingAction(){};
-    virtual void exec(uint64_t uuid) = 0;
+    ArrivingAction(const ActionCallback &cb)
+        : cb_(cb)
+    {
+
+    }
+    virtual ~ArrivingAction()
+    {
+
+    };
+
+    void exec(uint64_t uuid)
+    {
+        (cb_)(uuid);
+    }
 
     virtual std::optional<Coord> ranged_attack() const
     {
@@ -20,24 +35,21 @@ public:
     {
         return {};
     }
+private:
+    ActionCallback cb_;
 };
 
-using RangedAttackCallback = std::function<void(Coord rad, uint64_t unit_id)>;
+
 // action of all shooting units (like Arrow of Ballista for ex)
 class RangedAttack : public ArrivingAction
 {
 public:
-    RangedAttack(Coord rad, const RangedAttackCallback &cb_ptr)
-         : radius_(rad)
-         , cb_ptr_(cb_ptr)
+    RangedAttack(Coord rad, const ActionCallback &cb)
+         : ArrivingAction(cb)
+         , radius_(rad)
     {
 
     };
-
-    void exec(uint64_t uuid) override
-    {
-        (cb_ptr_)(radius_, uuid);
-    }
 
     std::optional<Coord> ranged_attack() const override
     {
@@ -46,24 +58,18 @@ public:
 
 private:
     Coord radius_;
-    RangedAttackCallback cb_ptr_;
 };
 
-using MelleAttackCallback = std::function<void(uint32_t power,  uint64_t unit_id)>;
 // action of all hand weapong units (like Warrior or Knight for ex)
 class MelleAttack : public ArrivingAction {
 public:
-    MelleAttack(uint32_t power, const MelleAttackCallback &cb)
-        : power_(power)
-        , cb_(cb)
+    MelleAttack(uint32_t power, const ActionCallback &cb)
+        : ArrivingAction(cb)
+        , power_(power)
     {
-        //cb_ptr_ = std::make_unique<MelleAttackCallback>(cb);
+
     };
 
-    void exec(uint64_t uuid) override
-    {
-        (cb_)(power_, uuid);
-    }
     std::optional<uint32_t> melle_attack() const override
     {
         return power_;
@@ -71,8 +77,6 @@ public:
 
 private:
     uint32_t power_;
-    MelleAttackCallback cb_;
-    //std::unique_ptr<MelleAttackCallback> cb_ptr_;
 };
 
 } //namespace ScoreWarrior::Test

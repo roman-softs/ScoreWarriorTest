@@ -23,8 +23,10 @@ public:
     void move_to(const Coords& coords);
 
     State state() const;
-    Coords coords() const;
+    const Coords& coords() const;
     uint64_t uuid() const;
+
+    const std::unique_ptr<ArrivingAction>& arriving_action() const;
 
 private:
     void set_state(State state);

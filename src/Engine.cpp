@@ -1,6 +1,5 @@
 #include "Engine.h"
 
-#include "Types.h"
 #include "CommandsFeeder.h"
 #include "Unit.h"
 #include "ArrivedAction.h"
@@ -70,7 +69,7 @@ void Engine::logic_machine(const CommandData &data)
         const auto uuid = command_options[0];
         const auto coords = Coords{command_options[1], command_options[2]};
         std::unique_ptr<ArrivingAction> attack = std::make_unique<MelleAttack>(command_options[3],
-                [this](uint32_t power,  uint64_t unit_id) { add_melle_attack_unit_cb(power, unit_id);});
+                [this](uint64_t unit_id) { melle_attack_cb(unit_id);});
 
         std::shared_ptr<Unit> warrior = std::make_shared<Unit>(uuid,
                 coords, std::move(attack));
@@ -82,7 +81,7 @@ void Engine::logic_machine(const CommandData &data)
         const auto uuid = command_options[0];
         const auto coords = Coords{command_options[1], command_options[2]};
         std::unique_ptr<ArrivingAction> range = std::make_unique<RangedAttack>(command_options[3],
-                [this](Coord rad,  uint64_t unit_id) { add_ranged_attack_unit_cb(rad, unit_id);});
+                [this](uint64_t unit_id) { ranged_attack_cb(unit_id);});
 
         std::shared_ptr<Unit> archer = std::make_shared<Unit>(uuid,
                 coords, std::move(range));
@@ -118,9 +117,8 @@ void Engine::logic_machine(const CommandData &data)
 }
 }
 
-void Engine::add_ranged_attack_unit_cb(Coord rad, uint64_t unit_id)
+void Engine::ranged_attack_cb(UnitID unit_id)
 {
-    const auto& coords = units_on_map_.at(unit_id)->coords();
     /*
      * вообще это неправильная логика, потому что если мы принимаем один тик как единицу времени, то
      * последовательность испускания сигналов не должна играть роли,
@@ -137,27 +135,59 @@ void Engine::add_ranged_attack_unit_cb(Coord rad, uint64_t unit_id)
                      + "WINNER IS " + std::to_string(unit_id) << std::endl;
     };*/
 
-    const auto ranged_attacked_units = found_units_in_donut(rad, coords);
-    /*std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
-                 + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(ranged_attacked_units)
-                 + "WINNER IS " + std::to_string(unit_id) << std::endl;*/
+    const auto& unit = units_on_map_.at(unit_id);
+
+    // TODO make safe code
+    const auto& coords = unit->coords();
+    const auto& rad = unit->arriving_action()->ranged_attack();
+
+    const auto ranged_attacked_units = found_units_in_donut(*rad, coords);
 
     print_march_message(coords, unit_id, ranged_attacked_units);
     remove_units(ranged_attacked_units);
-
-    const auto melle_attacked_units = found_unit_in_pos(coords, unit_id);
-    /*std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
-                 + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(melle_attacked_units)
-                 + "WINNER IS " + std::to_string(unit_id) << std::endl;*/
-    print_march_message(melle_attacked_units);
-    remove_units(melle_attacked_units);
 }
 
-void Engine::add_melle_attack_unit_cb(uint32_t power, uint64_t unit_id)
+void Engine::melle_attack_cb(UnitID unit_id)
 {
-    //attack_melle_units_[unit_id] = power;
+    const auto& unit = units_on_map_.at(unit_id);
+
+    // TODO make safe code
+    const auto& coords = unit->coords();
+
+    auto units_in_pos = found_unit_in_pos(coords, unit_id);
+    const auto& power = unit->arriving_action()->melle_attack();
+
+    bool all_dead = false; // parameter when two or more strongest units have the same power
+    auto winners_id = std::pair<uint32_t, UnitID>(*power, unit_id);
+    for(const auto& unit_id : units_in_pos) {
+        if (const auto& power = units_on_map_.at(unit_id)->arriving_action()->melle_attack()) {
+            if (*power > winners_id.first) {
+                all_dead = false;
+                winners_id = {*power, unit_id};
+            }
+            else if (*power == winners_id.first){
+                all_dead = true;
+            }
+        }
+    }
+
+    units_in_pos.push_back(unit_id);
+    if (all_dead) {
+        // TODO print all dead message
+        //print_march_message(coords, winners_id.first, units_in_pos);
+        //units_in_pos.push_back(unit_id);
+        std::cout << "ALL DEAD" << std::endl;
+        remove_units(units_in_pos);
+    }
+    else {
+        std::remove_if(units_in_pos.front(), units_in_pos.back(), [&winners_id](const auto& id){
+            return id == winners_id.first;
+        }
+        );
+        remove_units(units_in_pos);
+        print_march_message(coords, winners_id.first, units_in_pos);
+    }
+
 }
 
 void Engine::clear_attack_units()

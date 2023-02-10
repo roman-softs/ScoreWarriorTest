@@ -7,6 +7,7 @@
 namespace ScoreWarrior::Test {
 
 using Coord = uint64_t;
+using UnitID = uint64_t;
 using Coords = std::pair<Coord, Coord>;
 
 /*struct Coords
