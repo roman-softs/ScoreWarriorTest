@@ -12,9 +12,9 @@ std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units)
 {
     std::string res;
     for (const auto& unit : units) {
-        res += std::to_string(unit->uuid()) + ", ";
+        res += std::to_string(unit->uuid()) + " ";
     }
-    return res.substr(0, res.size() - 2);
+    return res.substr(0, res.size() - 1);
 }
 
 std::string coord_to_string(const Coords& coords)
@@ -22,21 +22,20 @@ std::string coord_to_string(const Coords& coords)
     return std::to_string(coords.first) + " " + std::to_string(coords.second);
 }
 
-std::string generate_march_finished_message(UnitID unit_id)
+std::string march_finnished_message(const Coords &coords, UnitID unit_id)
 {
-    return "MARCH " + std::to_string(unit_id) + " FINISHED ";
+    return "MARCH " + std::to_string(unit_id) + " FINISHED " + coord_to_string(coords);
+};
+
+std::string battle_message(const std::vector<std::shared_ptr<Unit>>& units_vec)
+{
+        return " BATTLE " + /*std::to_string(unit_id) + " " +*/ ids_to_string(units_vec);
 }
 
-std::string generate_march_message(const Coords &coords, UnitID unit_id, const std::vector<std::shared_ptr<Unit>>& units_vec)
+std::string winner_message(UnitID winner_id)
 {
-    std::string message = generate_march_finished_message(unit_id);
-    if (!units_vec.empty()) {
-        message += std::to_string(coords.first) + " " + std::to_string(coords.second)
-                + " BATTLE " + std::to_string(unit_id) + " " + ids_to_string(units_vec)
-                + " WINNER IS " + std::to_string(unit_id);
-    }
-    return message;
-};
+    return " WINNER IS " + std::to_string(winner_id);
+}
 
 }
 
@@ -142,14 +141,6 @@ void Engine::logic_machine(const CommandData &data)
 
 void Engine::ranged_attack_cb(UnitID unit_id)
 {
-    /*
-     * вообще это неправильная логика, потому что если мы принимаем один тик как единицу времени, то
-     * последовательность испускания сигналов не должна играть роли,
-     * первоначально я планировал написать систему которая коллекционирует всех атакующих
-     * на данном тике юнитов и логику которая сопоставляет радиусы, силы и тд,
-     * но в связи с тем что это слишком трудоемко для тестовой задачи (по моему мнению) решил отказаться.
-     * Теперь возможен случай когда лучник убьет другого лучника, а тот так и не успеет выстрелить
-     */
     const auto& unit = units_on_map_.at(unit_id);
 
     // TODO make safe code
@@ -157,7 +148,11 @@ void Engine::ranged_attack_cb(UnitID unit_id)
     const auto& rad = unit->arriving_action()->ranged_attack();
 
     const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
-    print_message(generate_march_message(coords, unit_id, ranged_attacked_units));
+    std::string log = march_finnished_message(coords, unit_id);
+    if (!ranged_attacked_units.empty()) {
+        winner_message(unit_id);
+    }
+    print_message(log);
 }
 
 void Engine::melle_attack_cb(UnitID unit_id)
@@ -169,7 +164,8 @@ void Engine::melle_attack_cb(UnitID unit_id)
 
     auto units_in_pos = found_unit_in_pos(coords, unit_id);
     if (units_in_pos.empty()) {
-        print_message(generate_march_message(coords, unit_id, {}));
+        print_message(march_finnished_message(coords, unit_id));
+        return;
     }
     const auto& power = unit->arriving_action()->melle_attack();
 
@@ -190,13 +186,13 @@ void Engine::melle_attack_cb(UnitID unit_id)
     units_in_pos.push_back(units_on_map_.at(unit_id));
     if (all_dead) {
         // TODO list of killed warriors
-        print_message(generate_march_finished_message(unit_id) + "ALL DEAD");
+        print_message(march_finnished_message(coords, unit_id) + battle_message(units_in_pos) + " ALL DEAD");
     }
     else {
         std::remove_if(units_in_pos.begin(), units_in_pos.end(), [&winners_id](const auto unit){
             return unit->uuid() == winners_id.first;
         });
-        print_message(generate_march_message(coords, winners_id.second, units_in_pos));
+        print_message(march_finnished_message(coords, unit_id) + battle_message(units_in_pos) + winner_message(winners_id.second));
     }
 
     std::for_each(units_in_pos.begin(), units_in_pos.end(), [](const auto& unit) {
@@ -252,11 +248,10 @@ std::vector<std::shared_ptr<Unit>> Engine::found_unit_in_pos(Coords pos, UnitID 
 
 void Engine::remove_killed_units()
 {
-    const auto count = std::erase_if(units_on_map_, [](const auto& item) {
+    std::erase_if(units_on_map_, [](const auto& item) {
         auto const& [id, unit] = item;
         return unit->is_killed();
     });
-    std::cout << "KILLED count " << count << std::endl;
 }
 
 void Engine::print_message(const std::string &message) const

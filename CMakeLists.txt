@@ -5,6 +5,8 @@ project(ScoreWarriorTest LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+file(COPY commands DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+
 file(GLOB source_files src/*cpp)
 
 add_library(

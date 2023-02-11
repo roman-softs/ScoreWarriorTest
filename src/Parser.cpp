@@ -9,6 +9,10 @@ namespace ScoreWarrior::Test {
 Parser::Parser(const std::string &file_path)
 {
     stream_.open(file_path);
+    if (!stream_.is_open()) {
+        throw std::runtime_error("can't open file " + file_path);
+    }
+
 }
 
 std::optional<CommandData> Parser::get_command()
