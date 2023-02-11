@@ -5,9 +5,9 @@
 
 namespace ScoreWarrior::Test {
 
-Unit::Unit(uint64_t uuid, const Coords& coords, std::unique_ptr<ArrivingAction> &&arriving_action)
+Unit::Unit(uint64_t uuid, const Pos& pos, std::unique_ptr<ArrivingAction> &&arriving_action)
     : uuid_(uuid)
-    , coords_(coords)
+    , pos_(pos)
     , arriving_action_(std::move(arriving_action))
 {}
 
@@ -33,7 +33,7 @@ void Unit::on_tick()
     }
 }
 
-void Unit::move_to(const Coords &coords)
+void Unit::move_to(const Pos &pos)
 {
     // TODO mb move to utils
 
@@ -43,8 +43,8 @@ void Unit::move_to(const Coords &coords)
         else
             return b - a;
     };
-    const Coord dx = calc_unsigned_delta(coords_.first, coords.first);
-    const Coord dy = calc_unsigned_delta(coords_.second, coords.second);
+    const Coord dx = calc_unsigned_delta(pos_.first, pos.first);
+    const Coord dy = calc_unsigned_delta(pos_.second, pos.second);
 
     const auto pow_x = std::pow(dx, 2);
     const auto pow_y = std::pow(dy, 2);
@@ -52,7 +52,7 @@ void Unit::move_to(const Coords &coords)
     const auto sqrt = std::sqrt(pow_x + pow_y);
     const auto test = static_cast<Coord>(std::ceil(sqrt));
     ticks_ = test;
-    coords_ = coords;
+    pos_ = pos;
 }
 
 Unit::State Unit::state() const
@@ -60,9 +60,9 @@ Unit::State Unit::state() const
     return state_;
 }
 
-const Coords &Unit::coords() const
+const Pos &Unit::pos() const
 {
-    return coords_;
+    return pos_;
 }
 
 uint64_t Unit::uuid() const

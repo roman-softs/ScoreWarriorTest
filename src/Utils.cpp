@@ -29,14 +29,14 @@ std::string ids_log(const std::vector<std::shared_ptr<Unit>>& units)
     return res.substr(0, res.size() - 1);
 }
 
-std::string coord_log(const Coords& coords)
+std::string coord_log(const Pos& pos)
 {
-    return std::to_string(coords.first) + " " + std::to_string(coords.second);
+    return std::to_string(pos.first) + " " + std::to_string(pos.second);
 }
 
-std::string march_finnished_log(const Coords &coords, UnitID unit_id)
+std::string march_finnished_log(const Pos &pos, UnitID unit_id)
 {
-    return "MARCH " + std::to_string(unit_id) + " FINISHED " + coord_log(coords);
+    return "MARCH " + std::to_string(unit_id) + " FINISHED " + coord_log(pos);
 };
 
 std::string battle_log(const std::vector<std::shared_ptr<Unit>>& units_vec)

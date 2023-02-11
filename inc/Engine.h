@@ -31,12 +31,12 @@ private:
     void print_message(const std::string& message) const;
 
     //void run_range_unit_attack(Coord rad, const Unit& unit);
-    std::vector<std::shared_ptr<Unit>> attack_units_in_donut(Coord rad, const  Coords& pos);
-    std::vector<std::shared_ptr<Unit>> found_unit_in_pos(const Coords& pos, UnitID except);
+    std::vector<std::shared_ptr<Unit>> attack_units_in_donut(Coord rad, const  Pos& pos);
+    std::vector<std::shared_ptr<Unit>> found_unit_in_pos(const Pos& pos, UnitID except);
 
     std::unique_ptr<CommandsFeeder> commands_feeder_;
 
-    std::optional<Coords> map_;
+    std::optional<Pos> map_;
     std::map<UnitID, std::shared_ptr<Unit>> units_on_map_;
 
     uint32_t ticks_counter = 0;
