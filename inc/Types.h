@@ -10,12 +10,6 @@ using Coord = uint64_t;
 using UnitID = uint64_t;
 using Coords = std::pair<Coord, Coord>;
 
-/*struct Coords
-{
-    Coord x;
-    Coord y
-};*/
-
 enum class Command
 {
     CREATE_MAP,

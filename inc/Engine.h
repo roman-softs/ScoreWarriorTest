@@ -31,10 +31,8 @@ private:
     void print_message(const std::string& message) const;
 
     //void run_range_unit_attack(Coord rad, const Unit& unit);
-    std::vector<std::shared_ptr<Unit>> attack_units_in_donut(Coord rad, Coords pos);
-    std::vector<std::shared_ptr<Unit>> found_unit_in_pos(Coords pos, UnitID except);
-
-
+    std::vector<std::shared_ptr<Unit>> attack_units_in_donut(Coord rad, const  Coords& pos);
+    std::vector<std::shared_ptr<Unit>> found_unit_in_pos(const Coords& pos, UnitID except);
 
     std::unique_ptr<CommandsFeeder> commands_feeder_;
 

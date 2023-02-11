@@ -2,5 +2,5 @@ CREATE_MAP 30 30 // создать карту(может быть ток в са
 SPAWN_ARCHER 1 4 7 5
 SPAWN_ARCHER 2 4 3 5
 MARCH 1 4 6
-MARCH 1 4 4
+MARCH 2 4 4
 WAIT 5

@@ -115,12 +115,22 @@ void Engine::ranged_attack_cb(UnitID unit_id)
 
     // TODO make safe code
     const auto& coords = unit->coords();
-    const auto& rad = unit->arriving_action()->ranged_attack();
 
-    const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
+    auto units_in_pos = found_unit_in_pos(coords, unit_id);
     std::string log = march_finnished_log(coords, unit_id);
+    if (!units_in_pos.empty()) {
+        unit->kill();
+        units_in_pos.push_back(unit);
+        // made checking onre one unit, but it is wrong, shuold be like with warriors
+        print_message(log + battle_log(units_in_pos) + winner_log(units_in_pos[0]->uuid()));
+        return;
+    }
+
+    const auto& rad = unit->arriving_action()->ranged_attack();
+    const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
+
     if (!ranged_attacked_units.empty()) {
-        winner_log(unit_id);
+        log += battle_log(ranged_attacked_units) + winner_log(unit_id);
     }
     print_message(log);
 }
@@ -168,10 +178,9 @@ void Engine::melle_attack_cb(UnitID unit_id)
     std::for_each(units_in_pos.begin(), units_in_pos.end(), [](const auto& unit) {
         unit->kill();
     });
-
 }
 
-std::vector<std::shared_ptr<Unit>> Engine::attack_units_in_donut(Coord rad, Coords pos)
+std::vector<std::shared_ptr<Unit>> Engine::attack_units_in_donut(Coord rad, const Coords &pos)
 {
     std::vector<std::shared_ptr<Unit>> units_in_range;
     for (const auto& [id, unit] : units_on_map_) {
@@ -202,7 +211,7 @@ std::vector<std::shared_ptr<Unit>> Engine::attack_units_in_donut(Coord rad, Coor
     return units_in_range;
 }
 
-std::vector<std::shared_ptr<Unit>> Engine::found_unit_in_pos(Coords pos, UnitID except)
+std::vector<std::shared_ptr<Unit>> Engine::found_unit_in_pos(const Coords& pos, UnitID except)
 {
     std::vector<std::shared_ptr<Unit>> units_in_range;
     for (const auto& [id, unit] : units_on_map_) {
