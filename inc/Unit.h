@@ -27,6 +27,8 @@ public:
     uint64_t uuid() const;
 
     const std::unique_ptr<ArrivingAction>& arriving_action() const;
+    void kill();
+    bool is_killed() const;
 
 private:
     void set_state(State state);
@@ -36,6 +38,7 @@ private:
     std::optional<Coord> ticks_;
     // TODO rename to event
     std::unique_ptr<ArrivingAction> arriving_action_;
+    bool is_killed_ = false;
 };
 
 } // namespace ScoreWarrior::Test

@@ -8,19 +8,19 @@
 namespace ScoreWarrior::Test {
 
 namespace  {
-std::string ids_to_string(const std::vector<UnitID>& ids) {
+std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units) {
     std::string res;
-    for (const auto id : ids) {
-        res += std::to_string(id) + ", ";
+    for (const auto& unit : units) {
+        res += std::to_string(unit->uuid()) + ", ";
     }
     return res.substr(0, res.size() - 2);
 }
 
-void print_march_message(const Coords &coords, UnitID unit_id, const std::vector<UnitID>& units_vec) {
+void print_march_message(const Coords &coords, UnitID unit_id, const std::vector<std::shared_ptr<Unit>>& units_vec) {
     std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
                  + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                 + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(units_vec)
-                 + "WINNER IS " + std::to_string(unit_id) << std::endl;
+                 + " BATTLE " + std::to_string(unit_id) + " " + ids_to_string(units_vec)
+                 + " WINNER IS " + std::to_string(unit_id) << std::endl;
 };
 
 }
@@ -106,7 +106,6 @@ void Engine::logic_machine(const CommandData &data)
     }
     case Command::WAIT: {
         check_number_of_options(1);
-        clear_attack_units();
         const auto num_ticks = command_options[0];
         std::cout << "WAIT " << num_ticks << std::endl;
         for(uint64_t i=0; i < num_ticks; ++i) {
@@ -116,7 +115,7 @@ void Engine::logic_machine(const CommandData &data)
                 unit->on_tick();
                 // after all units are react on tick we should check the logic of attacks
             }
-            remove_units(units_to_remove_);
+            remove_killed_units();
 
             /*for (auto it = units_on_map_.begin(); it != units_on_map_.end(); ++it)
             {
@@ -153,16 +152,16 @@ void Engine::ranged_attack_cb(UnitID unit_id)
     const auto& coords = unit->coords();
     const auto& rad = unit->arriving_action()->ranged_attack();
 
-    const auto ranged_attacked_units = found_units_in_donut(*rad, coords);
-
+    const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
     print_march_message(coords, unit_id, ranged_attacked_units);
+
     //remove_units(ranged_attacked_units);
-    add_removed_units(ranged_attacked_units);
+    //add_removed_units(ranged_attacked_units);
 }
 
 void Engine::melle_attack_cb(UnitID unit_id)
 {
-    const auto& unit = units_on_map_.at(unit_id);
+    /*const auto& unit = units_on_map_.at(unit_id);
 
     // TODO make safe code
     const auto& coords = unit->coords();
@@ -199,34 +198,13 @@ void Engine::melle_attack_cb(UnitID unit_id)
         //remove_units(units_in_pos);
         print_march_message(coords, winners_id.first, units_in_pos);
     }
-    add_removed_units(units_in_pos);
+    std::for_each(units_in_pos.begin(), units_in_pos.end(), [])*/
 
 }
 
-void Engine::clear_attack_units()
+std::vector<std::shared_ptr<Unit>> Engine::attack_units_in_donut(Coord rad, Coords pos)
 {
-    attack_ranged_units_.clear();
-    attack_melle_units_.clear();
-}
-
-void Engine::run_attack()
-{
-    std::vector<UnitID> units_under_range_attack;
-    for (const auto& [id, rad] : attack_ranged_units_) {
-        const auto& coords = units_on_map_.at(id)->coords();
-        const auto vec = found_units_in_donut(rad, coords);
-        //units_under_range_attack.insert(units_under_range_attack.end(),vec.begin(),vec.end());
-        std::cout << "MARCH " + std::to_string(id) + " FINISHED"
-                     + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                     + "BATTLE" + std::to_string(coords.first) + " " + ids_to_string(vec)
-                     + "WINNER IS" + std::to_string(id) << std::endl;
-        remove_units(vec);
-    }
-}
-
-std::vector<UnitID> Engine::found_units_in_donut(Coord rad, Coords pos)
-{
-    std::vector<UnitID> units_in_range;
+    std::vector<std::shared_ptr<Unit>> units_in_range;
     for (const auto& [id, unit] : units_on_map_) {
         if (unit->state() == Unit::State::Marching) {
             continue;
@@ -245,38 +223,37 @@ std::vector<UnitID> Engine::found_units_in_donut(Coord rad, Coords pos)
         const auto y_max = pos.second + rad;
 
         if (x_min <= coords.first <= x_max && y_min <= coords.second <= y_max) {
-            units_in_range.push_back(id);
+            if (unit->is_killed())
+                continue;
+
+            unit->kill();
+            units_in_range.push_back(unit);
         }
     }
     return units_in_range;
 }
 
-std::vector<UnitID> Engine::found_unit_in_pos(Coords pos, UnitID except)
+std::vector<std::shared_ptr<Unit>> Engine::found_unit_in_pos(Coords pos, UnitID except)
 {
-    std::vector<UnitID> units_in_range;
+    std::vector<std::shared_ptr<Unit>> units_in_range;
     for (const auto& [id, unit] : units_on_map_) {
         if (unit->state() == Unit::State::Marching || id == except) {
             continue;
         }
         if (unit->coords() == pos) {
-            units_in_range.push_back(id);
+            units_in_range.push_back(unit);
         }
     }
     return units_in_range;
 }
 
-void Engine::add_removed_units(const std::vector<UnitID> &vector)
+void Engine::remove_killed_units()
 {
-    units_to_remove_.insert(std::end(units_to_remove_), std::begin(vector), std::end(vector));
-}
-
-void Engine::remove_units(const std::vector<UnitID> &units)
-{
-    for (const auto id : units) {
-        units_on_map_.erase(id);
-        attack_ranged_units_.erase(id);
-        attack_melle_units_.erase(id);
-    }
+    const auto count = std::erase_if(units_on_map_, [](const auto& item) {
+        auto const& [id, unit] = item;
+        return unit->is_killed();
+    });
+    std::cout << "count " << count << std::endl;
 }
 
 } // namespace ScoreWarrior::Test

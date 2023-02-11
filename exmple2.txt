@@ -1,7 +1,6 @@
 CREATE_MAP 30 30 // создать карту(может быть ток в самом начале)
-SPAWN_WARRIOR 1 10 2 100 //разместить воина №1 в точке x=10 y=20 с силой 100
-SPAWN_WARRIOR 2 10 6 50
-SPAWN_ARCHER 3 0 0 5
-SPAWN_ARCHER 4 1 1 5
-MARCH 3 2 2
+SPAWN_ARCHER 1 4 7 5
+SPAWN_ARCHER 2 4 3 5
+MARCH 1 4 6
+MARCH 1 4 4
 WAIT 5

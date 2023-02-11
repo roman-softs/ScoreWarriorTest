@@ -75,6 +75,16 @@ const std::unique_ptr<ArrivingAction> &Unit::arriving_action() const
     return arriving_action_;
 }
 
+void Unit::kill()
+{
+    is_killed_ = true;
+}
+
+bool Unit::is_killed() const
+{
+    return is_killed_;
+}
+
 void Unit::set_state(Unit::State state)
 {
     state_ = state;
