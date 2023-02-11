@@ -155,7 +155,7 @@ void Engine::melle_attack_cb(UnitID unit_id)
 
     auto units_in_pos = found_unit_in_pos(coords, unit_id);
     if (units_in_pos.empty()) {
-        std::cout << "ALL DEAD" << std::endl;
+        print_march_message(coords, unit_id, {});
     }
     const auto& power = unit->arriving_action()->melle_attack();
 
