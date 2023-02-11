@@ -60,6 +60,7 @@ void Engine::logic_machine(const CommandData &data)
 
     switch (command) {
     case Command::CREATE_MAP: {
+        std::cout << "MAP CREATED " << command_options[0] << ", " << command_options[1] << std::endl;
         check_number_of_options(2);
         map_ = Coords{command_options[0], command_options[1]};
         break;
@@ -74,6 +75,7 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> warrior = std::make_shared<Unit>(uuid,
                 coords, std::move(attack));
         units_on_map_[uuid] = warrior;
+        std::cout << "WARRIOR SPAWNED " << uuid << " ON " << command_options[0] << ", " << command_options[1] << std::endl;
         break;
     }
     case Command::SPAWN_ARCHER: {
@@ -86,6 +88,7 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> archer = std::make_shared<Unit>(uuid,
                 coords, std::move(range));
         units_on_map_[uuid] = archer;
+        std::cout << "ARCHER SPAWNED " << uuid << " ON " << command_options[0] << ", " << command_options[1] << std::endl;
         break;
     }
     case Command::MARCH: {
@@ -97,6 +100,7 @@ void Engine::logic_machine(const CommandData &data)
             break;
         }
         const auto coords = Coords{command_options[1], command_options[2]};
+        std::cout << "MARCH STARTED " << uuid << " TO " << command_options[1] << ", " << command_options[2] << std::endl;
         it->second->move_to(coords);
         break;
     }
@@ -104,12 +108,20 @@ void Engine::logic_machine(const CommandData &data)
         check_number_of_options(1);
         clear_attack_units();
         const auto num_ticks = command_options[0];
+        std::cout << "WAIT " << num_ticks << std::endl;
         for(uint64_t i=0; i < num_ticks; ++i) {
             ticks_counter++;
+
             for (const auto& [id, unit] : units_on_map_) {
                 unit->on_tick();
                 // after all units are react on tick we should check the logic of attacks
             }
+            remove_units(units_to_remove_);
+
+            /*for (auto it = units_on_map_.begin(); it != units_on_map_.end(); ++it)
+            {
+                    it->second->on_tick();
+            }*/
         }
         break;
     }
@@ -144,7 +156,8 @@ void Engine::ranged_attack_cb(UnitID unit_id)
     const auto ranged_attacked_units = found_units_in_donut(*rad, coords);
 
     print_march_message(coords, unit_id, ranged_attacked_units);
-    remove_units(ranged_attacked_units);
+    //remove_units(ranged_attacked_units);
+    add_removed_units(ranged_attacked_units);
 }
 
 void Engine::melle_attack_cb(UnitID unit_id)
@@ -177,16 +190,16 @@ void Engine::melle_attack_cb(UnitID unit_id)
         //print_march_message(coords, winners_id.first, units_in_pos);
         //units_in_pos.push_back(unit_id);
         std::cout << "ALL DEAD" << std::endl;
-        remove_units(units_in_pos);
+        //remove_units(units_in_pos);
     }
     else {
-        std::remove_if(units_in_pos.front(), units_in_pos.back(), [&winners_id](const auto& id){
+        std::remove_if(units_in_pos.begin(), units_in_pos.end(), [&winners_id](const auto id){
             return id == winners_id.first;
-        }
-        );
-        remove_units(units_in_pos);
+        });
+        //remove_units(units_in_pos);
         print_march_message(coords, winners_id.first, units_in_pos);
     }
+    add_removed_units(units_in_pos);
 
 }
 
@@ -250,6 +263,11 @@ std::vector<UnitID> Engine::found_unit_in_pos(Coords pos, UnitID except)
         }
     }
     return units_in_range;
+}
+
+void Engine::add_removed_units(const std::vector<UnitID> &vector)
+{
+    units_to_remove_.insert(std::end(units_to_remove_), std::begin(vector), std::end(vector));
 }
 
 void Engine::remove_units(const std::vector<UnitID> &units)

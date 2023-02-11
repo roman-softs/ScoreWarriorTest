@@ -33,12 +33,14 @@ private:
     //void run_range_unit_attack(Coord rad, const Unit& unit);
     std::vector<UnitID> found_units_in_donut(Coord rad, Coords pos);
     std::vector<UnitID> found_unit_in_pos(Coords pos, UnitID except);
+    void add_removed_units(const std::vector<UnitID>& vector);
     void remove_units(const std::vector<UnitID>& units);
 
     std::unique_ptr<CommandsFeeder> commands_feeder_;
 
     std::optional<Coords> map_;
     std::map<UnitID, std::shared_ptr<Unit>> units_on_map_;
+    std::vector<UnitID> units_to_remove_;
 
     // map of units that in attack phase
     std::map<UnitID, Coord> attack_ranged_units_;

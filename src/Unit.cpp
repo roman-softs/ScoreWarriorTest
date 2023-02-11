@@ -31,35 +31,12 @@ void Unit::on_tick()
     else {
         set_state(State::Marching);
     }
-
-    /*const auto ticks = *ticks_;
-
-    switch (ticks) {
-    case 0:
-        setState(State::Standing);
-        ticks_.reset();
-        break;
-    case 1:
-        setState(State::Arriving);
-    }
-
-
-    if (*ticks_ == 0) {
-        setState(State::Standing);
-        ticks_.reset();
-    }
-    else if (*ticks_ == 1) {
-        setState(State::Arriving);
-    }
-    else {
-        setState(State::Arriving);
-    }*/
 }
 
 void Unit::move_to(const Coords &coords)
 {
     // TODO mb move to utils
-    coords_ = coords;
+
     const auto calc_unsigned_delta = [](Coord a, Coord b)->Coord {
         if (a > b)
             return a - b;
@@ -75,6 +52,7 @@ void Unit::move_to(const Coords &coords)
     const auto sqrt = std::sqrt(pow_x + pow_y);
     const auto test = static_cast<Coord>(std::ceil(sqrt));
     ticks_ = test;
+    coords_ = coords;
 }
 
 Unit::State Unit::state() const
