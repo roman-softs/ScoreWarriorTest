@@ -17,10 +17,13 @@ std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units) {
 }
 
 void print_march_message(const Coords &coords, UnitID unit_id, const std::vector<std::shared_ptr<Unit>>& units_vec) {
-    std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
-                 + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                 + " BATTLE " + std::to_string(unit_id) + " " + ids_to_string(units_vec)
-                 + " WINNER IS " + std::to_string(unit_id) << std::endl;
+    std::string message = "MARCH " + std::to_string(unit_id) + " FINISHED ";
+    if (!units_vec.empty()) {
+        message += std::to_string(coords.first) + " " + std::to_string(coords.second)
+                + " BATTLE " + std::to_string(unit_id) + " " + ids_to_string(units_vec)
+                + " WINNER IS " + std::to_string(unit_id);
+    }
+    std::cout << message << std::endl;
 };
 
 }
@@ -75,7 +78,7 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> warrior = std::make_shared<Unit>(uuid,
                 coords, std::move(attack));
         units_on_map_[uuid] = warrior;
-        std::cout << "WARRIOR SPAWNED " << uuid << " ON " << command_options[0] << ", " << command_options[1] << std::endl;
+        std::cout << "WARRIOR SPAWNED " << uuid << " ON " << command_options[1] << ", " << command_options[2] << std::endl;
         break;
     }
     case Command::SPAWN_ARCHER: {
@@ -116,11 +119,6 @@ void Engine::logic_machine(const CommandData &data)
                 // after all units are react on tick we should check the logic of attacks
             }
             remove_killed_units();
-
-            /*for (auto it = units_on_map_.begin(); it != units_on_map_.end(); ++it)
-            {
-                    it->second->on_tick();
-            }*/
         }
         break;
     }
@@ -138,14 +136,6 @@ void Engine::ranged_attack_cb(UnitID unit_id)
      * но в связи с тем что это слишком трудоемко для тестовой задачи (по моему мнению) решил отказаться.
      * Теперь возможен случай когда лучник убьет другого лучника, а тот так и не успеет выстрелить
      */
-
-    /*const auto print_march_message = [&coords, &unit_id](const std::vector<UnitID>& units_vec) {
-        std::cout << "MARCH " + std::to_string(unit_id) + " FINISHED "
-                     + std::to_string(coords.first) + " " + std::to_string(coords.second)
-                     + " BATTLE" + std::to_string(coords.first) + " " + ids_to_string(units_vec)
-                     + "WINNER IS " + std::to_string(unit_id) << std::endl;
-    };*/
-
     const auto& unit = units_on_map_.at(unit_id);
 
     // TODO make safe code
@@ -154,28 +144,28 @@ void Engine::ranged_attack_cb(UnitID unit_id)
 
     const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
     print_march_message(coords, unit_id, ranged_attacked_units);
-
-    //remove_units(ranged_attacked_units);
-    //add_removed_units(ranged_attacked_units);
 }
 
 void Engine::melle_attack_cb(UnitID unit_id)
 {
-    /*const auto& unit = units_on_map_.at(unit_id);
+    const auto& unit = units_on_map_.at(unit_id);
 
     // TODO make safe code
     const auto& coords = unit->coords();
 
     auto units_in_pos = found_unit_in_pos(coords, unit_id);
+    if (units_in_pos.empty()) {
+        std::cout << "ALL DEAD" << std::endl;
+    }
     const auto& power = unit->arriving_action()->melle_attack();
 
     bool all_dead = false; // parameter when two or more strongest units have the same power
     auto winners_id = std::pair<uint32_t, UnitID>(*power, unit_id);
-    for(const auto& unit_id : units_in_pos) {
-        if (const auto& power = units_on_map_.at(unit_id)->arriving_action()->melle_attack()) {
+    for(const auto& unit_in_pos : units_in_pos) {
+        if (const auto& power = unit_in_pos->arriving_action()->melle_attack()) {
             if (*power > winners_id.first) {
                 all_dead = false;
-                winners_id = {*power, unit_id};
+                winners_id = {*power, unit_in_pos->uuid()};
             }
             else if (*power == winners_id.first){
                 all_dead = true;
@@ -183,7 +173,7 @@ void Engine::melle_attack_cb(UnitID unit_id)
         }
     }
 
-    units_in_pos.push_back(unit_id);
+    units_in_pos.push_back(units_on_map_.at(unit_id));
     if (all_dead) {
         // TODO print all dead message
         //print_march_message(coords, winners_id.first, units_in_pos);
@@ -192,13 +182,15 @@ void Engine::melle_attack_cb(UnitID unit_id)
         //remove_units(units_in_pos);
     }
     else {
-        std::remove_if(units_in_pos.begin(), units_in_pos.end(), [&winners_id](const auto id){
-            return id == winners_id.first;
+        std::remove_if(units_in_pos.begin(), units_in_pos.end(), [&winners_id](const auto unit){
+            return unit->uuid() == winners_id.first;
         });
-        //remove_units(units_in_pos);
-        print_march_message(coords, winners_id.first, units_in_pos);
+        print_march_message(coords, winners_id.second, units_in_pos);
     }
-    std::for_each(units_in_pos.begin(), units_in_pos.end(), [])*/
+
+    std::for_each(units_in_pos.begin(), units_in_pos.end(), [](const auto& unit) {
+        unit->kill();
+    });
 
 }
 
@@ -237,7 +229,7 @@ std::vector<std::shared_ptr<Unit>> Engine::found_unit_in_pos(Coords pos, UnitID 
 {
     std::vector<std::shared_ptr<Unit>> units_in_range;
     for (const auto& [id, unit] : units_on_map_) {
-        if (unit->state() == Unit::State::Marching || id == except) {
+        if (unit->state() == Unit::State::Marching || id == except || unit->is_killed()) {
             continue;
         }
         if (unit->coords() == pos) {

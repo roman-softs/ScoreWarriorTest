@@ -11,7 +11,7 @@ using namespace std;
 int main()
 {
 
-    std::string item_name = std::filesystem::current_path().string() + "/exmple2.txt";
+    std::string item_name = std::filesystem::current_path().string() + "/exmple3.txt";
     using namespace ScoreWarrior::Test;
     std::unique_ptr<CommandsFeeder> feeder = std::make_unique<Parser>(item_name);
     Engine engine(std::move(feeder));
