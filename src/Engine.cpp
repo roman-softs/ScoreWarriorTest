@@ -1,43 +1,15 @@
 #include "Engine.h"
 
+#include "ArrivedAction.h"
 #include "CommandsFeeder.h"
 #include "Unit.h"
-#include "ArrivedAction.h"
+#include "Utils.h"
+
 #include <iostream>
 
 namespace ScoreWarrior::Test {
 
-namespace  {
-std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units)
-{
-    std::string res;
-    for (const auto& unit : units) {
-        res += std::to_string(unit->uuid()) + " ";
-    }
-    return res.substr(0, res.size() - 1);
-}
-
-std::string coord_to_string(const Coords& coords)
-{
-    return std::to_string(coords.first) + " " + std::to_string(coords.second);
-}
-
-std::string march_finnished_message(const Coords &coords, UnitID unit_id)
-{
-    return "MARCH " + std::to_string(unit_id) + " FINISHED " + coord_to_string(coords);
-};
-
-std::string battle_message(const std::vector<std::shared_ptr<Unit>>& units_vec)
-{
-        return " BATTLE " + /*std::to_string(unit_id) + " " +*/ ids_to_string(units_vec);
-}
-
-std::string winner_message(UnitID winner_id)
-{
-    return " WINNER IS " + std::to_string(winner_id);
-}
-
-}
+using namespace ScoreWarrior::Test::Utils;
 
 Engine::Engine(std::unique_ptr<CommandsFeeder> &&feeder)
 {
@@ -90,7 +62,7 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> warrior = std::make_shared<Unit>(uuid,
                 coords, std::move(attack));
         units_on_map_[uuid] = warrior;
-        print_message("WARRIOR SPAWNED " + std::to_string(uuid) + " ON " + coord_to_string(coords));
+        print_message("WARRIOR SPAWNED " + std::to_string(uuid) + " ON " + coord_log(coords));
 
         break;
     }
@@ -104,7 +76,7 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> archer = std::make_shared<Unit>(uuid,
                 coords, std::move(range));
         units_on_map_[uuid] = archer;
-        print_message("ARCHER SPAWNED " + std::to_string(uuid) + " ON " + coord_to_string(coords));
+        print_message("ARCHER SPAWNED " + std::to_string(uuid) + " ON " + coord_log(coords));
         break;
     }
     case Command::MARCH: {
@@ -116,7 +88,7 @@ void Engine::logic_machine(const CommandData &data)
             break;
         }
         const auto coords = Coords{command_options[1], command_options[2]};
-        print_message("MARCH STARTED " + std::to_string(uuid) + " ON " + coord_to_string(coords));
+        print_message("MARCH STARTED " + std::to_string(uuid) + " ON " + coord_log(coords));
         it->second->move_to(coords);
         break;
     }
@@ -129,13 +101,11 @@ void Engine::logic_machine(const CommandData &data)
 
             for (const auto& [id, unit] : units_on_map_) {
                 unit->on_tick();
-                // after all units are react on tick we should check the logic of attacks
             }
             remove_killed_units();
         }
         break;
     }
-
 }
 }
 
@@ -148,9 +118,9 @@ void Engine::ranged_attack_cb(UnitID unit_id)
     const auto& rad = unit->arriving_action()->ranged_attack();
 
     const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
-    std::string log = march_finnished_message(coords, unit_id);
+    std::string log = march_finnished_log(coords, unit_id);
     if (!ranged_attacked_units.empty()) {
-        winner_message(unit_id);
+        winner_log(unit_id);
     }
     print_message(log);
 }
@@ -164,7 +134,7 @@ void Engine::melle_attack_cb(UnitID unit_id)
 
     auto units_in_pos = found_unit_in_pos(coords, unit_id);
     if (units_in_pos.empty()) {
-        print_message(march_finnished_message(coords, unit_id));
+        print_message(march_finnished_log(coords, unit_id));
         return;
     }
     const auto& power = unit->arriving_action()->melle_attack();
@@ -186,13 +156,13 @@ void Engine::melle_attack_cb(UnitID unit_id)
     units_in_pos.push_back(units_on_map_.at(unit_id));
     if (all_dead) {
         // TODO list of killed warriors
-        print_message(march_finnished_message(coords, unit_id) + battle_message(units_in_pos) + " ALL DEAD");
+        print_message(march_finnished_log(coords, unit_id) + battle_log(units_in_pos) + " ALL DEAD");
     }
     else {
         std::remove_if(units_in_pos.begin(), units_in_pos.end(), [&winners_id](const auto unit){
             return unit->uuid() == winners_id.first;
         });
-        print_message(march_finnished_message(coords, unit_id) + battle_message(units_in_pos) + winner_message(winners_id.second));
+        print_message(march_finnished_log(coords, unit_id) + battle_log(units_in_pos) + winner_log(winners_id.second));
     }
 
     std::for_each(units_in_pos.begin(), units_in_pos.end(), [](const auto& unit) {
