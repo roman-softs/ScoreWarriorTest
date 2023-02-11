@@ -26,13 +26,15 @@ private:
     void ranged_attack_cb(UnitID unit_id);
     void melle_attack_cb(UnitID unit_id);
 
-    std::string print_current_tick() const;
+    void remove_killed_units();
+
+    void print_message(const std::string& message) const;
 
     //void run_range_unit_attack(Coord rad, const Unit& unit);
     std::vector<std::shared_ptr<Unit>> attack_units_in_donut(Coord rad, Coords pos);
     std::vector<std::shared_ptr<Unit>> found_unit_in_pos(Coords pos, UnitID except);
 
-    void remove_killed_units();
+
 
     std::unique_ptr<CommandsFeeder> commands_feeder_;
 

@@ -8,7 +8,8 @@
 namespace ScoreWarrior::Test {
 
 namespace  {
-std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units) {
+std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units)
+{
     std::string res;
     for (const auto& unit : units) {
         res += std::to_string(unit->uuid()) + ", ";
@@ -16,14 +17,25 @@ std::string ids_to_string(const std::vector<std::shared_ptr<Unit>>& units) {
     return res.substr(0, res.size() - 2);
 }
 
-void print_march_message(const Coords &coords, UnitID unit_id, const std::vector<std::shared_ptr<Unit>>& units_vec) {
-    std::string message = "MARCH " + std::to_string(unit_id) + " FINISHED ";
+std::string coord_to_string(const Coords& coords)
+{
+    return std::to_string(coords.first) + " " + std::to_string(coords.second);
+}
+
+std::string generate_march_finished_message(UnitID unit_id)
+{
+    return "MARCH " + std::to_string(unit_id) + " FINISHED ";
+}
+
+std::string generate_march_message(const Coords &coords, UnitID unit_id, const std::vector<std::shared_ptr<Unit>>& units_vec)
+{
+    std::string message = generate_march_finished_message(unit_id);
     if (!units_vec.empty()) {
         message += std::to_string(coords.first) + " " + std::to_string(coords.second)
                 + " BATTLE " + std::to_string(unit_id) + " " + ids_to_string(units_vec)
                 + " WINNER IS " + std::to_string(unit_id);
     }
-    std::cout << message << std::endl;
+    return message;
 };
 
 }
@@ -45,6 +57,7 @@ void Engine::run()
 {
     if (!commands_feeder_) {
         std::cout << "cannot run game, feeder is not set";
+        return;
     }
     while (const auto command = commands_feeder_->get_command()) {
         logic_machine(*command);
@@ -63,7 +76,7 @@ void Engine::logic_machine(const CommandData &data)
 
     switch (command) {
     case Command::CREATE_MAP: {
-        std::cout << "MAP CREATED " << command_options[0] << ", " << command_options[1] << std::endl;
+        print_message("MAP CREATED " + std::to_string(command_options[0]) + " " + std::to_string(command_options[1]));
         check_number_of_options(2);
         map_ = Coords{command_options[0], command_options[1]};
         break;
@@ -78,7 +91,8 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> warrior = std::make_shared<Unit>(uuid,
                 coords, std::move(attack));
         units_on_map_[uuid] = warrior;
-        std::cout << "WARRIOR SPAWNED " << uuid << " ON " << command_options[1] << ", " << command_options[2] << std::endl;
+        print_message("WARRIOR SPAWNED " + std::to_string(uuid) + " ON " + coord_to_string(coords));
+
         break;
     }
     case Command::SPAWN_ARCHER: {
@@ -91,7 +105,7 @@ void Engine::logic_machine(const CommandData &data)
         std::shared_ptr<Unit> archer = std::make_shared<Unit>(uuid,
                 coords, std::move(range));
         units_on_map_[uuid] = archer;
-        std::cout << "ARCHER SPAWNED " << uuid << " ON " << command_options[0] << ", " << command_options[1] << std::endl;
+        print_message("ARCHER SPAWNED " + std::to_string(uuid) + " ON " + coord_to_string(coords));
         break;
     }
     case Command::MARCH: {
@@ -103,14 +117,14 @@ void Engine::logic_machine(const CommandData &data)
             break;
         }
         const auto coords = Coords{command_options[1], command_options[2]};
-        std::cout << "MARCH STARTED " << uuid << " TO " << command_options[1] << ", " << command_options[2] << std::endl;
+        print_message("MARCH STARTED " + std::to_string(uuid) + " ON " + coord_to_string(coords));
         it->second->move_to(coords);
         break;
     }
     case Command::WAIT: {
         check_number_of_options(1);
         const auto num_ticks = command_options[0];
-        std::cout << "WAIT " << num_ticks << std::endl;
+        print_message("WAIT " + std::to_string(num_ticks));
         for(uint64_t i=0; i < num_ticks; ++i) {
             ticks_counter++;
 
@@ -143,7 +157,7 @@ void Engine::ranged_attack_cb(UnitID unit_id)
     const auto& rad = unit->arriving_action()->ranged_attack();
 
     const auto ranged_attacked_units = attack_units_in_donut(*rad, coords);
-    print_march_message(coords, unit_id, ranged_attacked_units);
+    print_message(generate_march_message(coords, unit_id, ranged_attacked_units));
 }
 
 void Engine::melle_attack_cb(UnitID unit_id)
@@ -155,7 +169,7 @@ void Engine::melle_attack_cb(UnitID unit_id)
 
     auto units_in_pos = found_unit_in_pos(coords, unit_id);
     if (units_in_pos.empty()) {
-        print_march_message(coords, unit_id, {});
+        print_message(generate_march_message(coords, unit_id, {}));
     }
     const auto& power = unit->arriving_action()->melle_attack();
 
@@ -175,17 +189,14 @@ void Engine::melle_attack_cb(UnitID unit_id)
 
     units_in_pos.push_back(units_on_map_.at(unit_id));
     if (all_dead) {
-        // TODO print all dead message
-        //print_march_message(coords, winners_id.first, units_in_pos);
-        //units_in_pos.push_back(unit_id);
-        std::cout << "ALL DEAD" << std::endl;
-        //remove_units(units_in_pos);
+        // TODO list of killed warriors
+        print_message(generate_march_finished_message(unit_id) + "ALL DEAD");
     }
     else {
         std::remove_if(units_in_pos.begin(), units_in_pos.end(), [&winners_id](const auto unit){
             return unit->uuid() == winners_id.first;
         });
-        print_march_message(coords, winners_id.second, units_in_pos);
+        print_message(generate_march_message(coords, winners_id.second, units_in_pos));
     }
 
     std::for_each(units_in_pos.begin(), units_in_pos.end(), [](const auto& unit) {
@@ -245,7 +256,12 @@ void Engine::remove_killed_units()
         auto const& [id, unit] = item;
         return unit->is_killed();
     });
-    std::cout << "count " << count << std::endl;
+    std::cout << "KILLED count " << count << std::endl;
+}
+
+void Engine::print_message(const std::string &message) const
+{
+    std::cout << "[" + std::to_string(ticks_counter) << "] " << message << std::endl;
 }
 
 } // namespace ScoreWarrior::Test
